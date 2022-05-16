@@ -4,9 +4,8 @@ package tuntap
 
 import (
 	"os"
-	"strings"
-	"syscall"
 	"unsafe"
+	"golang.org/x/sys/unix"
 )
 
 const (
@@ -27,48 +26,46 @@ func (d *device) Read(p []byte) (int, error)  { return d.f.Read(p) }
 func (d *device) Write(p []byte) (int, error) { return d.f.Write(p) }
 
 func newTUN(name string) (Interface, error) {
-	file, err := os.OpenFile("/dev/net/tun", os.O_RDWR, 0)
+	file, err := createTuntapInterface(name, unix.IFF_TUN|unix.IFF_NO_PI)
 	if err != nil {
 		return nil, err
 	}
 
-	iface, err := createTuntapInterface(file.Fd(), name, cIFF_TUN|cIFF_NO_PI)
-	if err != nil {
-		return nil, err
-	}
-
-	return &device{n: iface, f: file}, nil
+	return &device{n: name, f: file}, nil
 }
 
 func newTAP(name string) (Interface, error) {
-	file, err := os.OpenFile("/dev/net/tun", os.O_RDWR, 0)
+	file, err := createTuntapInterface(name, unix.IFF_TAP|unix.IFF_NO_PI)
 	if err != nil {
 		return nil, err
 	}
 
-	iface, err := createTuntapInterface(file.Fd(), name, cIFF_TAP|cIFF_NO_PI)
+	return &device{n: name, f: file}, nil
+}
+
+func createTuntapInterface(name string, flags uint16) (*os.File, error) {
+
+	tunfd, err := unix.Open("/dev/net/tun", os.O_RDWR, 0)
 	if err != nil {
 		return nil, err
 	}
 
-	return &device{n: iface, f: file}, nil
-}
+	var ifr [unix.IFNAMSIZ + 64]byte
+	copy(ifr[:], []byte(name))
+	*(*uint16)(unsafe.Pointer(&ifr[unix.IFNAMSIZ])) = flags
+	_, _, errno := unix.Syscall(
+		unix.SYS_IOCTL,
+		uintptr(tunfd),
+		uintptr(unix.TUNSETIFF),
+		uintptr(unsafe.Pointer(&ifr[0])),
+	)
 
-type tuntapInterface struct {
-	Name  [0x10]byte
-	Flags uint16
-	pad   [0x28 - 0x10 - 2]byte
-}
-
-func createTuntapInterface(fd uintptr, name string, flags uint16) (string, error) {
-	var req tuntapInterface
-	req.Flags = flags
-	copy(req.Name[:], name)
-
-	_, _, errno := syscall.Syscall(syscall.SYS_IOCTL, fd, uintptr(syscall.TUNSETIFF), uintptr(unsafe.Pointer(&req)))
 	if errno != 0 {
-		return "", errno
+		return nil, errno
 	}
+	unix.SetNonblock(tunfd, true)
 
-	return strings.Trim(string(req.Name[:]), "\x00"), nil
+	fd := os.NewFile(uintptr(tunfd), "/dev/net/tun")
+
+	return fd, nil
 }
