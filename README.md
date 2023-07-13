@@ -1,9 +1,9 @@
-**This repository is unmaintained:** You should use the more comprehensive and well maintained [water library](https://github.com/songgao/water).
+**This repository is not so maintained:** You should use the more comprehensive and well maintained [water library](https://github.com/songgao/water).
 
 TUN/TAP
 =======
 
-[![GoDoc](https://godoc.org/github.com/jamescun/tuntap?status.svg)](https://godoc.org/github.com/jamescun/tuntap) [![License](https://img.shields.io/badge/license-BSD-blue.svg)](LICENSE)
+[![GoDoc](https://godoc.org/github.com/thierry-f-78/go-tuntap?status.svg)](https://godoc.org/github.com/thierry-f-78/go-tuntap) [![License](https://img.shields.io/badge/license-BSD-blue.svg)](LICENSE)
 
 **NOTE:** This package is new and should be considered unstable, in terms of both API and function.
 
